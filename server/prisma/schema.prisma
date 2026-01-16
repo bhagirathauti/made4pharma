@@ -1,0 +1,133 @@
+// Prisma Schema for Made4Pharma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql" // Change to "mysql" if using MySQL
+  url      = env("DATABASE_URL")
+}
+
+// User model with role-based access
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(MEDICAL_OWNER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  store     Store?   @relation(fields: [storeId], references: [id])
+  storeId   String?
+
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// Enum for user roles
+enum Role {
+  ADMIN
+  MEDICAL_OWNER
+  CASHIER
+}
+
+// Store/Pharmacy model
+model Store {
+  id          String   @id @default(uuid())
+  name        String
+  address     String
+  phone       String
+  email       String?
+  licenseNo   String   @unique
+  gstNo       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users       User[]
+  products    Product[]
+  sales       Sale[]
+
+  @@index([licenseNo])
+  @@map("stores")
+}
+
+// Product/Medicine model
+model Product {
+  id            String   @id @default(uuid())
+  name          String
+  genericName   String?
+  manufacturer  String
+  batchNo       String
+  expiryDate    DateTime
+  quantity      Int      @default(0)
+  price         Float
+  mrp           Float
+  discount      Float    @default(0)
+  gstRate       Float    @default(0)
+  reorderLevel  Int      @default(10)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  store         Store    @relation(fields: [storeId], references: [id])
+  storeId       String
+  saleItems     SaleItem[]
+
+  @@index([name])
+  @@index([storeId])
+  @@index([expiryDate])
+  @@map("products")
+}
+
+// Sales model
+model Sale {
+  id            String   @id @default(uuid())
+  invoiceNo     String   @unique
+  totalAmount   Float
+  discount      Float    @default(0)
+  gstAmount     Float    @default(0)
+  netAmount     Float
+  paymentMethod String   @default("CASH")
+  status        String   @default("COMPLETED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  store         Store    @relation(fields: [storeId], references: [id])
+  storeId       String
+  items         SaleItem[]
+
+  @@index([invoiceNo])
+  @@index([storeId])
+  @@index([createdAt])
+  @@map("sales")
+}
+
+// Sale Items model
+model SaleItem {
+  id        String   @id @default(uuid())
+  quantity  Int
+  price     Float
+  discount  Float    @default(0)
+  gstAmount Float    @default(0)
+  subtotal  Float
+  createdAt DateTime @default(now())
+
+  // Relations
+  sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  saleId    String
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
