@@ -170,12 +170,25 @@ exports.createUser = async (req, res, next) => {
 
     const { name, email, password, role, storeId } = req.body;
 
-    // Check permissions
-    if (req.user.role === 'MEDICAL_OWNER' && role !== 'CASHIER') {
-      return res.status(403).json({
-        success: false,
-        message: 'Medical owners can only create cashier accounts',
-      });
+    // Check permissions and enforce store restrictions
+    if (req.user.role === 'MEDICAL_OWNER') {
+      if (role !== 'CASHIER') {
+        return res.status(403).json({
+          success: false,
+          message: 'Medical owners can only create cashier accounts',
+        });
+      }
+      
+      // Medical owners can only create cashiers for their own store
+      if (!req.user.storeId) {
+        return res.status(400).json({
+          success: false,
+          message: 'You must be assigned to a store to create cashiers',
+        });
+      }
+      
+      // Override storeId with owner's store
+      req.body.storeId = req.user.storeId;
     }
 
     // Check if email exists
@@ -200,7 +213,7 @@ exports.createUser = async (req, res, next) => {
         email,
         password: hashedPassword,
         role,
-        storeId,
+        storeId: req.body.storeId,
       },
       select: {
         id: true,
@@ -208,6 +221,12 @@ exports.createUser = async (req, res, next) => {
         email: true,
         role: true,
         createdAt: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 

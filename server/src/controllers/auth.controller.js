@@ -55,6 +55,13 @@ exports.register = async (req, res, next) => {
         email: true,
         role: true,
         createdAt: true,
+        storeId: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -99,6 +106,12 @@ exports.login = async (req, res, next) => {
         role: true,
         isActive: true,
         storeId: true,
+        store: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 

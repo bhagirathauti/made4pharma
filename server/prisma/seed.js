@@ -65,6 +65,30 @@ async function main() {
   });
   console.log('✓ Cashier created:', cashier.email);
 
+  // Create multiple dummy users (10-20 as requested) - here we create 15
+  const dummyPassword = await bcrypt.hash('password123', 10);
+  const dummyCount = 15;
+  for (let i = 1; i <= dummyCount; i++) {
+    const email = `user${i}@healthcare.com`;
+    const name = `User ${i}`;
+    try {
+      const u = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: {
+          email,
+          password: dummyPassword,
+          name,
+          role: 'CASHIER',
+          storeId: store.id,
+        },
+      });
+      console.log(`  - Created dummy user: ${u.email}`);
+    } catch (err) {
+      console.error(`  - Failed creating dummy user ${email}:`, err.message || err);
+    }
+  }
+
   // Create sample products
   const products = [
     {

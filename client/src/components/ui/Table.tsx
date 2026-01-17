@@ -164,10 +164,10 @@ export function Table<T>({
     });
   };
 
-  const handleSearch = (query: string) => {
+  const handleSearch = React.useCallback((query: string) => {
     setCurrentPage(1);
     onSearch?.(query);
-  };
+  }, [onSearch]);
 
   const renderCellContent = (column: TableColumn<T>, row: T) => {
     if (typeof column.accessor === 'function') {
@@ -404,13 +404,18 @@ export function Table<T>({
 
       {/* Pagination */}
       {pagination && totalPages > 1 && !loading && (
-        <Pagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          itemsPerPage={itemsPerPage}
-          totalItems={sortedData.length}
-        />
+        <div className="flex justify-end">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            itemsPerPage={itemsPerPage}
+            totalItems={sortedData.length}
+            showItemsInfo={false}
+            align="right"
+            useArrows={true}
+          />
+        </div>
       )}
     </div>
   );

@@ -80,7 +80,11 @@ const DesktopSidebar: React.FC<SidebarProps> = ({
           return (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.path)}
+              onClick={() => {
+                const isActive = activePath === item.path;
+                console.log('[Sidebar] click ->', { id: item.id, path: item.path, isActive });
+                onNavigate(item.path);
+              }}
               className={`w-full flex items-center rounded-lg transition-colors relative ${
                 isActive
                   ? 'bg-blue-50 text-blue-600'
@@ -234,6 +238,8 @@ const MobileSidebar: React.FC<SidebarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => {
+                    const isActive = activePath === item.path;
+                    console.log('[Sidebar] mobile click ->', { id: item.id, path: item.path, isActive });
                     onNavigate(item.path);
                     setMobileOpen(false);
                   }}

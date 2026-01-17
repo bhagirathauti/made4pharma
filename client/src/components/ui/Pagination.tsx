@@ -7,6 +7,8 @@ interface PaginationProps {
   itemsPerPage?: number;
   totalItems?: number;
   showItemsInfo?: boolean;
+  align?: 'between' | 'right' | 'center';
+  useArrows?: boolean;
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
@@ -16,6 +18,8 @@ export const Pagination: React.FC<PaginationProps> = ({
   itemsPerPage,
   totalItems,
   showItemsInfo = true,
+  align = 'between',
+  useArrows = false,
 }) => {
   const generatePageNumbers = () => {
     const pages: (number | string)[] = [];
@@ -55,8 +59,10 @@ export const Pagination: React.FC<PaginationProps> = ({
   const startItem = itemsPerPage && totalItems ? (currentPage - 1) * itemsPerPage + 1 : null;
   const endItem = itemsPerPage && totalItems ? Math.min(currentPage * itemsPerPage, totalItems) : null;
 
+  const justifyClass = align === 'between' ? 'justify-between' : align === 'right' ? 'justify-end' : 'justify-center';
+
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 py-3 bg-white border-t border-gray-200">
+    <div className={`flex flex-col sm:flex-row items-center ${justifyClass} gap-4 px-4 py-3 bg-white border-t border-gray-200`}>
       {/* Items Info */}
       {showItemsInfo && startItem && endItem && totalItems && (
         <div className="text-sm text-gray-700">
@@ -74,7 +80,13 @@ export const Pagination: React.FC<PaginationProps> = ({
           className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
-          Previous
+          {useArrows ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          ) : (
+            'Previous'
+          )}
         </button>
 
         {generatePageNumbers().map((page, index) => {
@@ -109,7 +121,13 @@ export const Pagination: React.FC<PaginationProps> = ({
           className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
-          Next
+          {useArrows ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          ) : (
+            'Next'
+          )}
         </button>
       </div>
     </div>
