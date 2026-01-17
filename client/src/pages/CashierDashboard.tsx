@@ -1,21 +1,86 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { DashboardSidebar } from '../components/DashboardSidebar';
 
 export const CashierDashboard: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-lg p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Cashier Dashboard</h1>
-              <p className="text-gray-600 mt-2">Process sales and manage transactions</p>
-            </div>
-            <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
-              Logout
-            </button>
-          </div>
+  const navigate = useNavigate();
+  const [currentPath, setCurrentPath] = useState('/cashier/pos');
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+  const handleLogout = () => {
+    // Clear all authentication data
+    localStorage.removeItem('token');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userEmail');
+    localStorage.removeItem('userName');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('storeId');
+    localStorage.removeItem('storeName');
+    
+    // Redirect to login page
+    navigate('/');
+  };
+
+  /* Removed inline sidebar items - now handled by DashboardSidebar component
+  const sidebarItems: SidebarItem[] = [
+    {
+      id: 'pos',
+      label: 'Point of Sale',
+      path: '/cashier/pos',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'transactions',
+      label: 'Transactions',
+      path: '/cashier/transactions',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+      ),
+    },
+    {
+      id: 'products',
+      label: 'Products Search',
+      path: '/cashier/products',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      ),
+    },
+    {
+      id: 'reports',
+      label: 'My Reports',
+      path: '/cashier/reports',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+      ),
+    },
+  ]; */
+
+  return (
+    <div className="flex h-screen bg-gray-50">
+      <DashboardSidebar
+        role="cashier"
+        currentPath={currentPath}
+        collapsed={sidebarCollapsed}
+        onNavigate={setCurrentPath}
+        onCollapse={setSidebarCollapsed}
+        onLogout={handleLogout}
+      />
+      
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto p-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
               <div className="flex items-center justify-between">
                 <div>
@@ -58,6 +123,7 @@ export const CashierDashboard: React.FC = () => {
               </div>
             </div>
           </div>
+          
 
           <div className="mt-8">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
@@ -128,6 +194,7 @@ export const CashierDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+        </main>
       </div>
     </div>
   );

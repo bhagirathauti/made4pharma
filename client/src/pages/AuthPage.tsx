@@ -59,26 +59,51 @@ export const AuthPage: React.FC = () => {
 
     setLoading(true);
 
-    // Simulate API call with role determination
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess('Login successful! Redirecting...');
+    try {
+      // Make actual API call to backend
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      // Store authentication data
+      const role: UserRole = data.data.user.role === 'ADMIN' ? 'admin' 
+        : data.data.user.role === 'CASHIER' ? 'cashier' 
+        : 'medical-owner';
       
-      // TODO: Replace this with actual API call that returns user role
-      // For demo purposes, routing based on email:
-      let role: UserRole = 'medical-owner'; // default
-      if (loginEmail.includes('admin')) {
-        role = 'admin';
-      } else if (loginEmail.includes('cashier')) {
-        role = 'cashier';
+      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userEmail', data.data.user.email);
+      localStorage.setItem('userName', data.data.user.name);
+      localStorage.setItem('userId', data.data.user.id);
+      
+      // Store storeId if user belongs to a store
+      if (data.data.user.storeId) {
+        localStorage.setItem('storeId', data.data.user.storeId);
+      }
+      if (data.data.user.store) {
+        localStorage.setItem('storeName', data.data.user.store.name);
       }
       
-      // Store user data (in real app, use proper state management)
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userEmail', loginEmail);
-      
+      setSuccess('Login successful! Redirecting...');
       setTimeout(() => routeBasedOnRole(role), 1000);
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -114,27 +139,52 @@ export const AuthPage: React.FC = () => {
 
     setLoading(true);
 
-    // Simulate API call - Signup always creates medical-owner role
-    setTimeout(() => {
-      setLoading(false);
-      setSuccess('Account created successfully! Redirecting to your dashboard...');
-      
-      // TODO: Implement actual signup API call
-      const role: UserRole = 'medical-owner'; // Always medical-owner for signup
-      
-      // Store user data
-      localStorage.setItem('userRole', role);
-      localStorage.setItem('userEmail', signupEmail);
-      localStorage.setItem('userName', signupName);
-      
-      console.log('Signup:', {
-        name: signupName,
-        email: signupEmail,
-        role: role,
+    try {
+      // Make actual API call to backend
+      const response = await fetch('http://localhost:5000/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: signupName,
+          email: signupEmail,
+          password: signupPassword,
+        }),
       });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      // Store authentication data
+      const role: UserRole = data.data.user.role === 'ADMIN' ? 'admin' 
+        : data.data.user.role === 'CASHIER' ? 'cashier' 
+        : 'medical-owner';
       
+      localStorage.setItem('token', data.data.token);
+      localStorage.setItem('userRole', role);
+      localStorage.setItem('userEmail', data.data.user.email);
+      localStorage.setItem('userName', data.data.user.name);
+      localStorage.setItem('userId', data.data.user.id);
+      
+      // Store storeId if user belongs to a store
+      if (data.data.user.storeId) {
+        localStorage.setItem('storeId', data.data.user.storeId);
+      }
+      if (data.data.user.store) {
+        localStorage.setItem('storeName', data.data.user.store.name);
+      }
+      
+      setSuccess('Account created successfully! Redirecting to your dashboard...');
       setTimeout(() => routeBasedOnRole(role), 1000);
-    }, 1500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create account. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
