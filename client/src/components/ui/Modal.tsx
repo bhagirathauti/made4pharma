@@ -14,8 +14,9 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   size = 'md',
   children,
-  closeOnOverlayClick = true,
-  closeOnEscape = true,
+  // disable overlay/escape closing by default to prevent accidental dismissals
+  closeOnOverlayClick = false,
+  closeOnEscape = false,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -53,6 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only close when explicitly allowed (default disabled to avoid accidental touches)
     if (closeOnOverlayClick && e.target === e.currentTarget) {
       onClose();
     }

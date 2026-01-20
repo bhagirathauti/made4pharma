@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const SystemSettings = () => {
   return (
     <div className="space-y-6">

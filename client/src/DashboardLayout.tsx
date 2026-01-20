@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DashboardSidebar } from './components/DashboardSidebar';
+import ShopProfileModal from './components/ui/ShopProfileModal';
+import StoreProfilePage from './pages/owner/StoreProfile';
+import { MedicalOwnerDashboard } from './pages/owner/MedicalOwnerDashboard';
+import { Inventory as InventoryPage } from './pages/owner/Inventory';
+import { CustomerContacts as CustomerContactsPage } from './pages/owner/CustomerContacts';
+import { Bills as BillsPage } from './pages/owner/Bills';
+import { StoreAnalytics as StoreAnalyticsPage } from './pages/owner/StoreAnalytics';
+import { Cashiers } from './pages/owner/Cashiers';
 
 // Admin pages (rendered via internal tabs)
 import { Dashboard as AdminDashboard } from './pages/admin/Dashboard';
@@ -24,10 +32,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedTab, setSelectedTab] = useState<string>('dashboard');
+  const [shopProfileOpen, setShopProfileOpen] = useState(false);
 
   // initialize selectedTab from current location on mount
   React.useEffect(() => {
     setSelectedTab(pathToTabId(location.pathname));
+
+    // If medical owner and they don't have a store assigned in localStorage, force shop profile
+    try {
+      if (role === 'medical-owner') {
+        const sid = localStorage.getItem('storeId');
+        if (!sid || sid === 'null') {
+          setShopProfileOpen(true);
+        }
+      }
+    } catch (err) {
+      console.warn('Error checking storeId in localStorage', err);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -55,10 +76,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
       return 'dashboard';
     }
     if (path.startsWith('/owner')) {
+      if (path.includes('/store-profile') || path.includes('/profile')) return 'profile';
       if (path.includes('/inventory')) return 'inventory';
-      if (path.includes('/sales')) return 'sales';
-      if (path.includes('/staff')) return 'staff';
-      if (path.includes('/reports')) return 'reports';
+      if (path.includes('/customers')) return 'customers';
+      if (path.includes('/bills')) return 'bills';
+      if (path.includes('/cashiers')) return 'cashiers';
+      if (path.includes('/analytics') || path.includes('/store-analytics')) return 'analytics';
       return 'dashboard';
     }
     if (path.startsWith('/cashier')) {
@@ -71,11 +94,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
   };
 
   const handleNavigate = (path: string) => {
+    // prevent navigation while shop profile modal is required
+    if (shopProfileOpen) {
+      return;
+    }
+
     const tab = pathToTabId(path);
     console.log('[DashboardLayout] handleNavigate ->', { path, tab });
     setSelectedTab(tab);
     // optionally keep URL in sync by uncommenting the next line
     // navigate(path);
+  };
+
+  const handleShopSaved = (store: { id: string; name: string }) => {
+    // persist store info and close modal
+    localStorage.setItem('storeId', store.id);
+    if (store.name) localStorage.setItem('storeName', store.name);
+    setShopProfileOpen(false);
   };
 
   // make sidebar highlight follow selectedTab (keeps UI consistent even without URL changes)
@@ -92,6 +127,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
           return '/admin/settings';
         default:
           return '/admin/dashboard';
+      }
+    }
+    if (role === 'medical-owner') {
+      switch (tabId) {
+        case 'inventory':
+          return '/owner/inventory';
+        case 'cashiers':
+          return '/owner/cashiers';
+        case 'customers':
+          return '/owner/customers';
+        case 'bills':
+          return '/owner/bills';
+        case 'analytics':
+          return '/owner/analytics';
+        case 'profile':
+          return '/owner/store-profile';
+        default:
+          return '/owner/dashboard';
       }
     }
     // fallback
@@ -114,6 +167,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 overflow-y-auto p-8">
           <div className="max-w-7xl mx-auto">
+            <ShopProfileModal isOpen={shopProfileOpen} onClose={() => {}} onSaved={handleShopSaved} />
             {/* Tab-based rendering: render components based on `selectedTab` */}
             <div className="mb-4 text-sm text-gray-500">Active tab: <strong className="text-gray-800">{selectedTab}</strong></div>
             {role === 'admin' && (
@@ -127,7 +181,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
             )}
             {role !== 'admin' && (
               <div>
-                <p className="text-gray-600">{`No tab-renderer implemented for role: ${role}`}</p>
+                {role === 'medical-owner' && (
+                  <>
+                    {selectedTab === 'dashboard' && <MedicalOwnerDashboard />}
+                    {selectedTab === 'profile' && <StoreProfilePage />}
+                    {selectedTab === 'inventory' && <InventoryPage />}
+                      {selectedTab === 'cashiers' && <Cashiers />}
+                    {selectedTab === 'customers' && <CustomerContactsPage />}
+                    {selectedTab === 'bills' && <BillsPage />}
+                    {selectedTab === 'analytics' && <StoreAnalyticsPage />}
+                  </>
+                )}
+                {role === 'cashier' && (
+                  <>
+                    <p className="text-gray-600">Cashier workspace (coming soon)</p>
+                  </>
+                )}
               </div>
             )}
           </div>

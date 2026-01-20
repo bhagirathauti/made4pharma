@@ -239,3 +239,37 @@ exports.createUser = async (req, res, next) => {
     next(error);
   }
 };
+
+// Get cashiers for the authenticated owner's store (or all cashiers for admin)
+exports.getCashiersForOwner = async (req, res, next) => {
+  try {
+    const callerRole = req.user?.role;
+
+    const where = { role: 'CASHIER' };
+
+    if (callerRole === 'MEDICAL_OWNER') {
+      const storeId = req.user?.storeId;
+      if (!storeId) {
+        return res.status(400).json({ success: false, message: 'User not assigned to a store' });
+      }
+      where.storeId = storeId;
+    }
+
+    const users = await prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ success: true, data: { users } });
+  } catch (error) {
+    next(error);
+  }
+};

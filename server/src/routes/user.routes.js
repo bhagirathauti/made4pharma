@@ -29,6 +29,8 @@ router.use(authenticate);
 
 // Routes
 router.get('/', authorize('ADMIN'), userController.getAllUsers);
+// Allow medical owners to fetch cashiers for their store
+router.get('/cashiers', authorize('ADMIN', 'MEDICAL_OWNER'), userController.getCashiersForOwner);
 router.post(
   '/',
   authorize('ADMIN', 'MEDICAL_OWNER'),

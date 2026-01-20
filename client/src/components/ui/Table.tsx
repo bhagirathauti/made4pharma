@@ -33,6 +33,8 @@ interface TableProps<T> {
   onSelectionChange?: (selected: T[]) => void;
   pagination?: boolean;
   itemsPerPage?: number;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
   emptyMessage?: string;
   className?: string;
 }
@@ -52,9 +54,11 @@ export function Table<T>({
   itemsPerPage = 10,
   emptyMessage = 'No data available',
   className = '',
+  currentPage,
+  onPageChange,
 }: TableProps<T>) {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [internalPage, setInternalPage] = useState<number>(currentPage ?? 1);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
     const visibility: Record<string, boolean> = {};
@@ -119,10 +123,11 @@ export function Table<T>({
   const totalPages = Math.ceil(sortedData.length / itemsPerPage);
   const paginatedData = useMemo(() => {
     if (!pagination) return sortedData;
-    const start = (currentPage - 1) * itemsPerPage;
+    const effectivePage = typeof currentPage === 'number' ? currentPage : internalPage;
+    const start = (effectivePage - 1) * itemsPerPage;
     const end = start + itemsPerPage;
     return sortedData.slice(start, end);
-  }, [sortedData, currentPage, itemsPerPage, pagination]);
+  }, [sortedData, currentPage, internalPage, itemsPerPage, pagination]);
 
   // Selection
   const allSelected = paginatedData.length > 0 && paginatedData.every((row) => selectedRows.has(keyExtractor(row)));
@@ -165,9 +170,19 @@ export function Table<T>({
   };
 
   const handleSearch = React.useCallback((query: string) => {
-    setCurrentPage(1);
+    // Only reset internal page when uncontrolled; do not call parent's onPageChange
+    if (!onPageChange) setInternalPage(1);
     onSearch?.(query);
-  }, [onSearch]);
+  }, [onSearch, onPageChange]);
+
+  useEffect(() => {
+    if (typeof currentPage === 'number') setInternalPage(currentPage);
+  }, [currentPage]);
+
+  const setPage = (p: number) => {
+    if (onPageChange) onPageChange(p);
+    else setInternalPage(p);
+  };
 
   const renderCellContent = (column: TableColumn<T>, row: T) => {
     if (typeof column.accessor === 'function') {
@@ -406,9 +421,9 @@ export function Table<T>({
       {pagination && totalPages > 1 && !loading && (
         <div className="flex justify-end">
           <Pagination
-            currentPage={currentPage}
+            currentPage={typeof currentPage === 'number' ? currentPage : internalPage}
             totalPages={totalPages}
-            onPageChange={setCurrentPage}
+            onPageChange={setPage}
             itemsPerPage={itemsPerPage}
             totalItems={sortedData.length}
             showItemsInfo={false}

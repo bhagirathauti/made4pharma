@@ -1,5 +1,3 @@
-import React from 'react';
-
 export const StoreManagement = () => {
   return (
     <div className="space-y-6">
