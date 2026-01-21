@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { DashboardSidebar } from './components/DashboardSidebar';
 import ShopProfileModal from './components/ui/ShopProfileModal';
@@ -34,6 +34,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
   const [selectedTab, setSelectedTab] = useState<string>('dashboard');
   const [shopProfileOpen, setShopProfileOpen] = useState(false);
 
+  const PosWrapper = lazy(() => import('./pages/cashier/POS'));
+  const CashierDashboard = lazy(() => import('./pages/cashier/Dashboard'));
+  const SalesHistory = lazy(() => import('./pages/cashier/SalesHistory'));
+  const ProductsPage = lazy(() => import('./pages/cashier/Products'));
+
   // initialize selectedTab from current location on mount
   React.useEffect(() => {
     setSelectedTab(pathToTabId(location.pathname));
@@ -49,8 +54,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
     } catch (err) {
       console.warn('Error checking storeId in localStorage', err);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    // update selectedTab whenever location changes
+  }, [location.pathname]);
 
   const handleLogout = () => {
     // Clear all authentication data
@@ -88,7 +93,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
       if (path.includes('/transactions')) return 'transactions';
       if (path.includes('/products')) return 'products';
       if (path.includes('/reports')) return 'reports';
-      return 'pos';
+      if (path.includes('/pos')) return 'pos';
+      return 'dashboard';
     }
     return 'dashboard';
   };
@@ -102,8 +108,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
     const tab = pathToTabId(path);
     console.log('[DashboardLayout] handleNavigate ->', { path, tab });
     setSelectedTab(tab);
-    // optionally keep URL in sync by uncommenting the next line
-    // navigate(path);
+    // keep URL in sync
+    navigate(path);
   };
 
   const handleShopSaved = (store: { id: string; name: string }) => {
@@ -151,7 +157,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
     return location.pathname;
   };
 
-  const activePathForSidebar = tabIdToPath(selectedTab) || location.pathname;
+  const activePathForSidebar = location.pathname;
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -194,7 +200,27 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
                 )}
                 {role === 'cashier' && (
                   <>
-                    <p className="text-gray-600">Cashier workspace (coming soon)</p>
+                    {selectedTab === 'dashboard' && (
+                      <React.Suspense fallback={<div>Loading dashboard...</div>}>
+                        <CashierDashboard />
+                      </React.Suspense>
+                    )}
+                    {selectedTab === 'transactions' && (
+                      <React.Suspense fallback={<div>Loading sales history...</div>}>
+                        <SalesHistory />
+                      </React.Suspense>
+                    )}
+                    {selectedTab === 'products' && (
+                      <React.Suspense fallback={<div>Loading products...</div>}>
+                        <ProductsPage />
+                      </React.Suspense>
+                    )}
+                    {selectedTab === 'pos' && (
+                      <React.Suspense fallback={<div>Loading POS...</div>}>
+                        <PosWrapper />
+                      </React.Suspense>
+                    )}
+                    {selectedTab !== 'pos' && selectedTab !== 'dashboard' && <p className="text-gray-600">Cashier workspace (select a tab)</p>}
                   </>
                 )}
               </div>

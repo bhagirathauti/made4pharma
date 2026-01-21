@@ -84,6 +84,7 @@ export const Cashiers: React.FC = () => {
   const columns = [
     { id: 'name', header: 'Name', accessor: 'name', sortable: true },
     { id: 'email', header: 'Email', accessor: 'email' },
+    { id: 'totalSales', header: 'Total Sales', accessor: (r: any) => (typeof r.totalSales === 'number' ? r.totalSales.toLocaleString(undefined, { style: 'currency', currency: 'INR' }) : '—') },
     { id: 'createdAt', header: 'Created', accessor: (r: any) => new Date(r.createdAt).toLocaleDateString() },
   ];
 

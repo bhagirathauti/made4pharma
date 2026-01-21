@@ -23,6 +23,8 @@ model User {
   // Relations
   store     Store?   @relation(fields: [storeId], references: [id])
   storeId   String?
+  // Sales made by this user when acting as a cashier
+  sales     Sale[]
 
   @@index([email])
   @@index([role])
@@ -92,6 +94,9 @@ model Sale {
   id            String   @id @default(uuid())
   invoiceNo     String   @unique
   totalAmount   Float
+  // optional customer info captured at sale time
+  customerName  String?
+  customerMobile String?
   discount      Float    @default(0)
   gstAmount     Float    @default(0)
   netAmount     Float
@@ -103,6 +108,9 @@ model Sale {
   // Relations
   store         Store    @relation(fields: [storeId], references: [id])
   storeId       String
+  // Cashier who made the sale
+  cashier       User?    @relation(fields: [cashierId], references: [id])
+  cashierId     String?
   items         SaleItem[]
 
   @@index([invoiceNo])
@@ -124,8 +132,11 @@ model SaleItem {
   // Relations
   sale      Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   saleId    String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
+  // product may be null for manual ad-hoc items added by cashier
+  product   Product? @relation(fields: [productId], references: [id])
+  productId String?
+  // name for manual items (or snapshot of product name)
+  name      String?
 
   @@index([saleId])
   @@index([productId])

@@ -268,7 +268,35 @@ exports.getCashiersForOwner = async (req, res, next) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    res.json({ success: true, data: { users } });
+    // Compute total sales per cashier (sum of totalAmount) scoped to store when available
+    try {
+      const saleWhere = {};
+      // if owner, restrict sales to their store; for admin, leave unrestricted (or could scope differently)
+      if (req.user?.storeId) saleWhere.storeId = req.user.storeId;
+
+      // Only consider sales that have a cashierId
+      saleWhere.cashierId = { not: null };
+
+      const grouped = await prisma.sale.groupBy({
+        by: ['cashierId'],
+        where: saleWhere,
+        _sum: { totalAmount: true },
+      });
+
+      const totalsMap = {};
+      for (const g of grouped) {
+        if (g.cashierId) totalsMap[g.cashierId] = g._sum?.totalAmount || 0;
+      }
+
+      // Attach totalSales to each user record
+      const usersWithTotals = users.map((u) => ({ ...u, totalSales: totalsMap[u.id] || 0 }));
+
+      res.json({ success: true, data: { users: usersWithTotals } });
+    } catch (aggErr) {
+      // Fallback: return users without totals if aggregation fails
+      console.error('Failed to aggregate sales per cashier', aggErr);
+      res.json({ success: true, data: { users } });
+    }
   } catch (error) {
     next(error);
   }
