@@ -52,3 +52,41 @@ exports.getMyStore = async (req, res, next) => {
     next(error);
   }
 };
+
+// Admin: get all stores with aggregated total sales per store
+exports.getAllStoresWithSales = async (req, res, next) => {
+  try {
+    // fetch basic store info
+    const stores = await prisma.store.findMany({
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        phone: true,
+        email: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // aggregate sales totals by store
+    const grouped = await prisma.sale.groupBy({
+      by: ['storeId'],
+      _sum: { totalAmount: true },
+    });
+
+    const totalsMap = {};
+    for (const g of grouped) {
+      if (g.storeId) totalsMap[g.storeId] = g._sum?.totalAmount || 0;
+    }
+
+    const storesWithTotals = stores.map((s) => ({
+      ...s,
+      totalSales: totalsMap[s.id] || 0,
+    }));
+
+    res.json({ success: true, data: { stores: storesWithTotals } });
+  } catch (error) {
+    next(error);
+  }
+};

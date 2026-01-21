@@ -39,14 +39,39 @@ export const Inventory: React.FC = () => {
     fetchProducts();
     console.log(products)
   }, []);
+  
+  // aggregated products by name + manufacturer
+  const aggregated = React.useMemo(() => {
+    const map: Record<string, any> = {};
+    for (const p of allProducts) {
+      const key = `${p.name}||${p.manufacturer || ''}`;
+      if (!map[key]) {
+        map[key] = { id: key, name: p.name, manufacturer: p.manufacturer, totalQuantity: 0, totalValue: 0, batches: [] };
+      }
+      const qty = typeof p.quantity === 'number' ? p.quantity : parseInt(p.quantity || '0', 10);
+      const price = typeof p.price === 'number' ? p.price : parseFloat(p.price || '0');
+      map[key].totalQuantity += qty;
+      map[key].totalValue += qty * (isNaN(price) ? 0 : price);
+      map[key].batches.push(p);
+    }
+    return Object.values(map);
+  }, [allProducts]);
+
+  const [selectedAggregate, setSelectedAggregate] = useState<any | null>(null);
+  const [showBatchesModal, setShowBatchesModal] = useState(false);
   const columns = useMemo(() => [
-    { id: 'name', header: 'Name', accessor: 'name', sortable: true },
-    { id: 'batchNo', header: 'Batch', accessor: 'batchNo' },
-    { id: 'expiry', header: 'Expiry', accessor: (r: any) => new Date(r.expiryDate).toLocaleDateString() },
-    { id: 'quantity', header: 'Qty', accessor: (r: any) => (typeof r.quantity === 'number' ? r.quantity : parseInt(r.quantity || '0', 10)) },
-    { id: 'mrp', header: 'MRP', accessor: (r: any) => `₹${(r.mrp ?? 0).toFixed(2)}` },
-    { id: 'price', header: 'Cost', accessor: (r: any) => `₹${(r.price ?? 0).toFixed(2)}` },
-  ], []);
+    { id: 'name', header: 'Name', accessor: (r: any) => (
+        <div className="flex items-center gap-3">
+          <button onClick={() => { setSelectedAggregate(r); setShowBatchesModal(true); }} className="text-sm text-left">
+            <div className="font-medium">{r.name}</div>
+            <div className="text-xs text-gray-500">{r.manufacturer}</div>
+          </button>
+        </div>
+      ), sortable: true },
+    { id: 'quantity', header: 'Total Qty', accessor: (r: any) => r.totalQuantity },
+    { id: 'avgCost', header: 'Avg Cost', accessor: (r: any) => `₹${(r.totalQuantity ? (r.totalValue / r.totalQuantity) : 0).toFixed(2)}` },
+    { id: 'totalValue', header: 'Total Value', accessor: (r: any) => `₹${(r.totalValue ?? 0).toFixed(2)}` },
+  ], [selectedAggregate]);
 
   return (
     <div className="p-6">
@@ -85,7 +110,7 @@ export const Inventory: React.FC = () => {
           </div>
           <Table
             columns={columns as any}
-            data={products}
+            data={aggregated}
             keyExtractor={(r: any) => r.id}
             emptyMessage="No products yet"
             searchable
@@ -96,20 +121,40 @@ export const Inventory: React.FC = () => {
               const query = (q || '').toLowerCase().trim();
               setCurrentPage(1);
               if (!query) {
-                setProducts(allProducts);
+                // reset to aggregated
                 return;
               }
-              const filtered = allProducts.filter((p: any) => {
+              const filtered = aggregated.filter((p: any) => {
                 return (
                   String(p.name || '').toLowerCase().includes(query) ||
-                  String(p.batchNo || '').toLowerCase().includes(query) ||
-                  String(p.manufacturer || '').toLowerCase().includes(query) ||
-                  String(p.genericName || '').toLowerCase().includes(query)
+                  String(p.manufacturer || '').toLowerCase().includes(query)
                 );
               });
-              setProducts(filtered);
+              // show filtered aggregated list by setting a temporary view
+              // We replace products state with expanded aggregated entries for simplicity
+              setProducts(filtered as any);
             }}
           />
+          <Modal isOpen={showBatchesModal} onClose={() => setShowBatchesModal(false)} size="lg" closeOnOverlayClick={true}>
+            <ModalHeader onClose={() => setShowBatchesModal(false)}>{selectedAggregate?.name}</ModalHeader>
+            <ModalBody>
+              <div className="mb-3">
+                <div className="text-sm text-gray-600">{selectedAggregate?.manufacturer}</div>
+                <div className="mt-2 text-sm text-gray-700">Total Qty: <span className="font-medium">{selectedAggregate?.totalQuantity ?? 0}</span> &middot; Avg Cost: <span className="font-medium">₹{(selectedAggregate?.totalQuantity ? ((selectedAggregate?.totalValue ?? 0) / selectedAggregate.totalQuantity).toFixed(2) : '0.00')}</span> &middot; Total Value: <span className="font-medium">₹{(selectedAggregate?.totalValue ?? 0).toFixed(2)}</span></div>
+              </div>
+              <Table
+                columns={[
+                  { id: 'batch', header: 'Batch', accessor: 'batchNo' },
+                  { id: 'expiry', header: 'Expiry', accessor: (r: any) => new Date(r.expiryDate).toLocaleDateString() },
+                  { id: 'qty', header: 'Qty', accessor: (r: any) => (typeof r.quantity === 'number' ? r.quantity : parseInt(r.quantity || '0', 10)) },
+                  { id: 'cost', header: 'Cost', accessor: (r: any) => `₹${(r.price ?? 0).toFixed(2)}` },
+                ] as any}
+                data={selectedAggregate?.batches || []}
+                keyExtractor={(r: any) => r.id}
+                emptyMessage="No batches"
+              />
+            </ModalBody>
+          </Modal>
         </div>
       </div>
 

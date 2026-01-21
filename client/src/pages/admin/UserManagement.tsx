@@ -37,7 +37,14 @@ export const UserManagement: React.FC = () => {
         const data = await response.json();
         // API returns { success: true, data: { users: [...] } }
         if (data && data.data && Array.isArray(data.data.users)) {
-          setUsers(data.data.users);
+          // Filter out ADMIN users and attach storeName from nested store relation
+          const usersFromApi = data.data.users
+            .filter((u: any) => u.role !== 'ADMIN')
+            .map((u: any) => ({
+              ...u,
+              storeName: (u.store && u.store.name) ? u.store.name : (u.storeName || '')
+            }));
+          setUsers(usersFromApi);
         } else if (Array.isArray(data)) {
           setUsers(data as any);
         } else {

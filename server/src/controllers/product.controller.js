@@ -9,7 +9,7 @@ exports.createProduct = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Validation error', errors: errors.array() });
     }
 
-    const { name, batchNumber, expiryDate, quantity, costPrice, mrp, discount, supplier } = req.body;
+    const { name, batchNumber, expiryDate, quantity, costPrice, mrp, discount, supplier, reorderLevel } = req.body;
     console.log('createProduct - received data:', { name, batchNumber, expiryDate, quantity, costPrice, mrp, discount, supplier });
     // Debug: log incoming body and quantity parsing
     try {
@@ -20,6 +20,8 @@ exports.createProduct = async (req, res, next) => {
 
     // Require store context from authenticated user
     const storeId = req.user?.storeId;
+    console.log('createProduct - req.user:', req.user);
+    console.log('createProduct - resolved storeId:', storeId);
     if (!storeId) {
       return res.status(400).json({ success: false, message: 'User not assigned to a store' });
     }
@@ -27,7 +29,38 @@ exports.createProduct = async (req, res, next) => {
     const quantityInt = typeof quantity === 'number' ? quantity : parseInt(quantity || '0', 10);
     console.log('createProduct - parsed quantity:', quantityInt);
 
-    const product = await prisma.product.create({
+    // If a product with same store and batch number exists, treat as a refill: update quantity
+    let product = null;
+    if (batchNumber) {
+      product = await prisma.product.findFirst({ where: { storeId, batchNo: batchNumber } });
+    }
+
+    const refillFlag = req.body && (req.body.refill === true || req.body.refill === 'true');
+    console.log('createProduct - refill flag:', refillFlag);
+
+    if (product && refillFlag) {
+      // update existing product quantity and optionally update other fields
+      const updated = await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          quantity: (typeof product.quantity === 'number' ? product.quantity : Number(product.quantity || 0)) + quantityInt,
+          price: typeof costPrice === 'number' ? costPrice : (costPrice ? parseFloat(costPrice) : product.price),
+          mrp: typeof mrp === 'number' ? mrp : (mrp ? parseFloat(mrp) : product.mrp),
+          discount: typeof discount === 'number' ? discount : (discount ? parseFloat(discount) : product.discount),
+          manufacturer: supplier || product.manufacturer,
+          expiryDate: expiryDate ? new Date(expiryDate) : product.expiryDate,
+          reorderLevel: typeof reorderLevel === 'number' ? reorderLevel : (reorderLevel ? parseInt(String(reorderLevel), 10) : product.reorderLevel),
+        },
+      });
+
+      console.log('createProduct - updated existing product:', updated);
+      return res.status(200).json({ success: true, message: 'Product updated (refill)', data: { product: updated } });
+    }
+    if (product && !refillFlag) {
+      console.log('createProduct - batch exists but refill flag not set; creating a new product record for this batch/store');
+    }
+    // Else create new product record (new batch)
+    const created = await prisma.product.create({
       data: {
         name,
         batchNo: batchNumber,
@@ -38,11 +71,13 @@ exports.createProduct = async (req, res, next) => {
         manufacturer: supplier || null,
         storeId,
         quantity: quantityInt,
+        reorderLevel: typeof reorderLevel === 'number' ? reorderLevel : (reorderLevel ? parseInt(String(reorderLevel), 10) : undefined),
       },
     });
-
-    res.status(201).json({ success: true, message: 'Product created', data: { product } });
+    console.log('createProduct - created product:', created);
+    res.status(201).json({ success: true, message: 'Product created', data: { product: created } });
   } catch (error) {
+    console.error('createProduct - error:', error && error.message, error && error.stack);
     next(error);
   }
 };
@@ -61,6 +96,36 @@ exports.getProducts = async (req, res, next) => {
     });
 
     res.json({ success: true, data: { products } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get distributors/manufacturers for the authenticated user's store with aggregated totals
+exports.getDistributors = async (req, res, next) => {
+  try {
+    const storeId = req.user?.storeId;
+    if (!storeId) {
+      return res.status(400).json({ success: false, message: 'User not assigned to a store' });
+    }
+
+    // Fetch products for the store and aggregate totals per manufacturer
+    const products = await prisma.product.findMany({ where: { storeId } });
+
+    const map = {};
+    for (const p of products) {
+      const m = p.manufacturer || 'Unknown';
+      const qty = typeof p.quantity === 'number' ? p.quantity : parseInt(String(p.quantity || '0'), 10);
+      const price = typeof p.price === 'number' ? p.price : parseFloat(String(p.price || '0'));
+      const amount = qty * price;
+      if (!map[m]) map[m] = { manufacturer: m, totalQuantity: 0, totalAmount: 0 };
+      map[m].totalQuantity += qty;
+      map[m].totalAmount += amount;
+    }
+
+    const distributors = Object.values(map).sort((a, b) => b.totalAmount - a.totalAmount);
+
+    res.json({ success: true, data: { distributors } });
   } catch (error) {
     next(error);
   }

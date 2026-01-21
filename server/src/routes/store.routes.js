@@ -18,5 +18,7 @@ const profileValidation = [
 // Only medical owners can create/update their store profile
 router.post('/profile', authorize('MEDICAL_OWNER'), profileValidation, storeController.upsertStoreProfile);
 router.get('/profile', authorize('MEDICAL_OWNER'), storeController.getMyStore);
+// Admin: list all stores with sales totals
+router.get('/', authorize('ADMIN'), storeController.getAllStoresWithSales);
 
 module.exports = router;

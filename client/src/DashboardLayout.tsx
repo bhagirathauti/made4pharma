@@ -9,6 +9,7 @@ import { CustomerContacts as CustomerContactsPage } from './pages/owner/Customer
 import { Bills as BillsPage } from './pages/owner/Bills';
 import { StoreAnalytics as StoreAnalyticsPage } from './pages/owner/StoreAnalytics';
 import { Cashiers } from './pages/owner/Cashiers';
+import { Distributors } from './pages/owner/Distributors';
 
 // Admin pages (rendered via internal tabs)
 import { Dashboard as AdminDashboard } from './pages/admin/Dashboard';
@@ -86,6 +87,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
       if (path.includes('/customers')) return 'customers';
       if (path.includes('/bills')) return 'bills';
       if (path.includes('/cashiers')) return 'cashiers';
+      if (path.includes('/distributors')) return 'distributors';
       if (path.includes('/analytics') || path.includes('/store-analytics')) return 'analytics';
       return 'dashboard';
     }
@@ -141,6 +143,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
           return '/owner/inventory';
         case 'cashiers':
           return '/owner/cashiers';
+        case 'distributors':
+          return '/owner/distributors';
         case 'customers':
           return '/owner/customers';
         case 'bills':
@@ -193,6 +197,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ role }) => {
                     {selectedTab === 'profile' && <StoreProfilePage />}
                     {selectedTab === 'inventory' && <InventoryPage />}
                       {selectedTab === 'cashiers' && <Cashiers />}
+                      {selectedTab === 'distributors' && <Distributors />}
                     {selectedTab === 'customers' && <CustomerContactsPage />}
                     {selectedTab === 'bills' && <BillsPage />}
                     {selectedTab === 'analytics' && <StoreAnalyticsPage />}

@@ -1,4 +1,41 @@
+import React, { useEffect, useState } from 'react';
+import { Table } from '../../components/ui/Table';
+
 export const StoreManagement = () => {
+  const [stores, setStores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+  const fetchStores = async () => {
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${apiBase}/api/stores`, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+      const data = await res.json();
+      if (res.ok) setStores(data.data?.stores || []);
+      else console.error('Failed to load stores', data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStores(); }, []);
+
+  const columns = [
+    { id: 'name', header: 'Store Name', accessor: 'name', sortable: true },
+    { id: 'phone', header: 'Mobile', accessor: 'phone' },
+    { id: 'email', header: 'Email', accessor: 'email' },
+    { id: 'address', header: 'Address', accessor: 'address' },
+    { id: 'totalSales', header: 'Total Sales', accessor: (r: any) => (typeof r.totalSales === 'number' ? r.totalSales.toLocaleString(undefined, { style: 'currency', currency: 'USD' }) : '—') },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -14,12 +51,8 @@ export const StoreManagement = () => {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-        <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-        </svg>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Store Management</h3>
-        <p className="text-gray-600">Store management features will be available here.</p>
+      <div className="bg-white rounded-xl shadow-sm p-4">
+        <Table columns={columns as any} data={stores} keyExtractor={(r: any) => r.id} loading={loading} emptyMessage="No stores found" searchable />
       </div>
     </div>
   );

@@ -21,4 +21,7 @@ router.post(
 // Get products for authenticated user's store
 router.get('/', authenticate, productController.getProducts);
 
+// Get distributors / manufacturers totals for store
+router.get('/distributors', authenticate, authorize('MEDICAL_OWNER', 'ADMIN'), productController.getDistributors);
+
 module.exports = router;
