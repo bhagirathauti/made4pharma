@@ -13,7 +13,7 @@ const api = (path: string, opts: any = {}) => {
 };
 
 type AnyProduct = Record<string, any>;
-type CartItem = { id: string; name: string; price: number; quantity: number; productId?: string; manual?: boolean };
+type CartItem = { id: string; name: string; price: number; quantity: number; productId?: string; manual?: boolean; originalPrice?: number | null; override?: boolean };
 
 const POS: React.FC = () => {
   const [allProducts, setAllProducts] = useState<AnyProduct[]>([]);
@@ -22,15 +22,16 @@ const POS: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [customer, setCustomer] = useState({ name: '', mobile: '' });
+  const [customer, setCustomer] = useState({ name: '', mobile: '', address: '', doctorName: '', doctorMobile: '' });
   const [loading, setLoading] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'ONLINE'>('CASH');
   const [qtyInput, setQtyInput] = useState<Record<string, string>>({});
+  const [priceInput, setPriceInput] = useState<Record<string, string>>({});
 
   const resetForm = () => {
     setStep(1);
     setCart([]);
-    setCustomer({ name: '', mobile: '' });
+    setCustomer({ name: '', mobile: '', address: '', doctorName: '', doctorMobile: '' });
     setSearch('');
     setProducts(allProducts);
     setLoading(false);
@@ -66,7 +67,9 @@ const POS: React.FC = () => {
     if (!qq) return setProducts(allProducts);
     setProducts(allProducts.filter((p) => {
       const anyP = p as any;
-      return String(anyP.name || '').toLowerCase().includes(qq) || String(anyP.batchNo || '').toLowerCase().includes(qq);
+      const name = String(anyP.name || '').toLowerCase();
+      const batch = String(anyP.batchNo || '').toLowerCase();
+      return name.startsWith(qq) || batch.startsWith(qq);
     }));
   }
 
@@ -80,7 +83,8 @@ const POS: React.FC = () => {
         return c;
       }
       if (found) return c.map((it) => (it.productId === p.id ? { ...it, quantity: it.quantity + qty } : it));
-      return [...c, { id: `${p.id}-${Date.now()}`, productId: p.id, name: p.name || 'Item', price: Number(p.mrp || p.price || 0), quantity: qty }];
+      const basePrice = Number(p.mrp ?? p.price ?? 0);
+      return [...c, { id: `${p.id}-${Date.now()}`, productId: p.id, name: p.name || 'Item', price: basePrice, originalPrice: basePrice, quantity: qty, override: false }];
     });
   }
 
@@ -104,6 +108,14 @@ const POS: React.FC = () => {
       }
       return c.map((it) => (it.id === id ? { ...it, quantity: Math.max(1, qty) } : it));
     });
+  }
+
+  function setPriceExact(id: string, price: number) {
+    setCart((c) => c.map((it) => (it.id === id ? { ...it, price: Math.max(0, price), override: true } : it)));
+  }
+
+  function resetPriceToOriginal(id: string) {
+    setCart((c) => c.map((it) => (it.id === id ? { ...it, price: it.originalPrice ?? it.price, override: false } : it)));
   }
 
   function removeFromCart(id: string) {
@@ -170,6 +182,20 @@ const POS: React.FC = () => {
                     <label className="block text-sm font-medium">Mobile (optional)</label>
                     <input value={customer.mobile} onChange={(e) => setCustomer({ ...customer, mobile: e.target.value })} className="border p-2 w-full" />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">Address (optional)</label>
+                    <input value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} className="border p-2 w-full" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Prescribing doctor (optional)</label>
+                    <input value={customer.doctorName} onChange={(e) => setCustomer({ ...customer, doctorName: e.target.value })} className="border p-2 w-full" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">Doctor mobile (optional)</label>
+                    <input value={customer.doctorMobile} onChange={(e) => setCustomer({ ...customer, doctorMobile: e.target.value })} className="border p-2 w-full" />
+                  </div>
                 </div>
               )}
 
@@ -211,7 +237,9 @@ const POS: React.FC = () => {
                         const q = (search || '').toLowerCase().trim();
                         const suggestions = allProducts.filter((p) => {
                           const anyP = p as any;
-                          return String(anyP.name || '').toLowerCase().includes(q) || String(anyP.batchNo || '').toLowerCase().includes(q);
+                          const name = String(anyP.name || '').toLowerCase();
+                          const batch = String(anyP.batchNo || '').toLowerCase();
+                          return name.startsWith(q) || batch.startsWith(q);
                         }).slice(0, 3);
                         if (suggestions.length === 0) return <div className="text-sm text-gray-500">No suggestions — press Enter to add manually</div>;
                         return (
@@ -242,7 +270,32 @@ const POS: React.FC = () => {
                         <Table
                       columns={[
                         { id: 'name', header: 'Name', accessor: (r: CartItem) => r.name },
-                        { id: 'price', header: 'Price', accessor: (r: CartItem) => `₹${r.price.toFixed(2)}` },
+                        { id: 'price', header: 'Price', accessor: (r: CartItem) => {
+                            const inputVal = priceInput[r.id] ?? String(r.price.toFixed?.(2) ?? r.price);
+                            return (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  className="w-24 border p-1"
+                                  value={inputVal}
+                                  onChange={(e) => setPriceInput((s) => ({ ...s, [r.id]: e.target.value }))}
+                                  onBlur={() => {
+                                    const raw = priceInput[r.id] ?? String(r.price);
+                                    const parsed = parseFloat(raw?.toString().replace(/,/g, '') || '0');
+                                    const final = Number.isFinite(parsed) && parsed >= 0 ? parsed : r.price;
+                                    setPriceExact(r.id, final);
+                                    setPriceInput((s) => { const c = { ...s }; delete c[r.id]; return c; });
+                                  }}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                                />
+                                {r.override && <span className="text-xs text-yellow-700">edited</span>}
+                                {r.originalPrice != null && r.override && (
+                                  <button className="text-xs text-blue-600" onClick={() => resetPriceToOriginal(r.id)}>Reset</button>
+                                )}
+                              </div>
+                            );
+                          } },
                         { id: 'quantity', header: 'Qty', accessor: (r: CartItem) => {
                             const inputVal = qtyInput[r.id] ?? String(r.quantity);
                             return (

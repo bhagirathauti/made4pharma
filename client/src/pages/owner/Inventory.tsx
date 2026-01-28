@@ -46,12 +46,14 @@ export const Inventory: React.FC = () => {
     for (const p of allProducts) {
       const key = `${p.name}||${p.manufacturer || ''}`;
       if (!map[key]) {
-        map[key] = { id: key, name: p.name, manufacturer: p.manufacturer, totalQuantity: 0, totalValue: 0, batches: [] };
+        map[key] = { id: key, name: p.name, manufacturer: p.manufacturer, totalQuantity: 0, totalValue: 0, totalMrpValue: 0, batches: [] };
       }
       const qty = typeof p.quantity === 'number' ? p.quantity : parseInt(p.quantity || '0', 10);
       const price = typeof p.price === 'number' ? p.price : parseFloat(p.price || '0');
+      const mrp = typeof p.mrp === 'number' ? p.mrp : parseFloat(p.mrp || '0');
       map[key].totalQuantity += qty;
       map[key].totalValue += qty * (isNaN(price) ? 0 : price);
+      map[key].totalMrpValue += qty * (isNaN(mrp) ? 0 : mrp);
       map[key].batches.push(p);
     }
     return Object.values(map);
@@ -70,6 +72,7 @@ export const Inventory: React.FC = () => {
       ), sortable: true },
     { id: 'quantity', header: 'Total Qty', accessor: (r: any) => r.totalQuantity },
     { id: 'avgCost', header: 'Avg Cost', accessor: (r: any) => `₹${(r.totalQuantity ? (r.totalValue / r.totalQuantity) : 0).toFixed(2)}` },
+    { id: 'avgMrp', header: 'Avg MRP', accessor: (r: any) => `₹${(r.totalQuantity ? (r.totalMrpValue / r.totalQuantity) : 0).toFixed(2)}` },
     { id: 'totalValue', header: 'Total Value', accessor: (r: any) => `₹${(r.totalValue ?? 0).toFixed(2)}` },
   ], [selectedAggregate]);
 
@@ -140,7 +143,7 @@ export const Inventory: React.FC = () => {
             <ModalBody>
               <div className="mb-3">
                 <div className="text-sm text-gray-600">{selectedAggregate?.manufacturer}</div>
-                <div className="mt-2 text-sm text-gray-700">Total Qty: <span className="font-medium">{selectedAggregate?.totalQuantity ?? 0}</span> &middot; Avg Cost: <span className="font-medium">₹{(selectedAggregate?.totalQuantity ? ((selectedAggregate?.totalValue ?? 0) / selectedAggregate.totalQuantity).toFixed(2) : '0.00')}</span> &middot; Total Value: <span className="font-medium">₹{(selectedAggregate?.totalValue ?? 0).toFixed(2)}</span></div>
+                <div className="mt-2 text-sm text-gray-700">Total Qty: <span className="font-medium">{selectedAggregate?.totalQuantity ?? 0}</span> &middot; Avg Cost: <span className="font-medium">₹{(selectedAggregate?.totalQuantity ? ((selectedAggregate?.totalValue ?? 0) / selectedAggregate.totalQuantity).toFixed(2) : '0.00')}</span> &middot; Avg MRP: <span className="font-medium">₹{(selectedAggregate?.totalQuantity ? ((selectedAggregate?.totalMrpValue ?? 0) / selectedAggregate.totalQuantity).toFixed(2) : '0.00')}</span> &middot; Total Value: <span className="font-medium">₹{(selectedAggregate?.totalValue ?? 0).toFixed(2)}</span></div>
               </div>
               <Table
                 columns={[
@@ -148,6 +151,7 @@ export const Inventory: React.FC = () => {
                   { id: 'expiry', header: 'Expiry', accessor: (r: any) => new Date(r.expiryDate).toLocaleDateString() },
                   { id: 'qty', header: 'Qty', accessor: (r: any) => (typeof r.quantity === 'number' ? r.quantity : parseInt(r.quantity || '0', 10)) },
                   { id: 'cost', header: 'Cost', accessor: (r: any) => `₹${(r.price ?? 0).toFixed(2)}` },
+                  { id: 'mrp', header: 'MRP', accessor: (r: any) => `₹${(r.mrp ?? 0).toFixed(2)}` },
                 ] as any}
                 data={selectedAggregate?.batches || []}
                 keyExtractor={(r: any) => r.id}

@@ -97,6 +97,9 @@ model Sale {
   // optional customer info captured at sale time
   customerName  String?
   customerMobile String?
+  customerAddress String?
+  doctorName     String?
+  doctorMobile   String?
   discount      Float    @default(0)
   gstAmount     Float    @default(0)
   netAmount     Float

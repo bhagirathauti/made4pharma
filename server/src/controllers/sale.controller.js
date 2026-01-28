@@ -64,6 +64,9 @@ exports.createSale = async (req, res, next) => {
         storeId,
         customerName: (req.body && req.body.customer && req.body.customer.name) ? String(req.body.customer.name) : null,
         customerMobile: (req.body && req.body.customer && req.body.customer.mobile) ? String(req.body.customer.mobile) : null,
+        customerAddress: (req.body && req.body.customer && req.body.customer.address) ? String(req.body.customer.address) : null,
+        doctorName: (req.body && req.body.customer && req.body.customer.doctorName) ? String(req.body.customer.doctorName) : null,
+        doctorMobile: (req.body && req.body.customer && req.body.customer.doctorMobile) ? String(req.body.customer.doctorMobile) : null,
       };
 
       // Ensure we have the authenticated user id

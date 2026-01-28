@@ -30,7 +30,7 @@ export const Distributors: React.FC = () => {
 
   const columns = [
     { id: 'manufacturer', header: 'Distributor / Manufacturer', accessor: 'manufacturer', sortable: true },
-    { id: 'totalAmount', header: 'Total Amount', accessor: (r: any) => (typeof r.totalAmount === 'number' ? r.totalAmount.toLocaleString(undefined, { style: 'currency', currency: 'INR' }) : '—') },
+    { id: 'totalAmount', header: 'Total Cost', accessor: (r: any) => (typeof r.totalAmount === 'number' ? r.totalAmount.toLocaleString(undefined, { style: 'currency', currency: 'INR' }) : '—') },
   ];
 
   return (
