@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table } from '../../components/ui';
+import { Table, Input, Button } from '../../components/ui';
 
 // Lightweight POS for cashier - single, clean implementation
 const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -157,7 +157,7 @@ const POS: React.FC = () => {
     <div>
         <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold">Point of Sale</h2>
-        <button onClick={openModal} className="bg-blue-600 text-white px-3 py-2 rounded">Start New Bill</button>
+        <Button onClick={openModal}>Start New Bill</Button>
       </div>
 
       {modalOpen && (
@@ -166,45 +166,30 @@ const POS: React.FC = () => {
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-semibold">Create Bill — Step {step} of 3</h3>
                 <div className="flex items-center gap-2">
-                {step > 1 && <button onClick={() => setStep(step - 1)} className="px-3 py-1 border rounded">Back</button>}
-                <button onClick={closeModal} className="px-3 py-1 border rounded">Cancel</button>
+                {step > 1 && <Button variant="outline" size="sm" onClick={() => setStep(step - 1)}>Back</Button>}
+                <Button variant="outline" size="sm" onClick={closeModal}>Cancel</Button>
               </div>
             </div>
 
             <div>
               {step === 1 && (
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium">Customer name</label>
-                    <input value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="border p-2 w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">Mobile (optional)</label>
-                    <input value={customer.mobile} onChange={(e) => setCustomer({ ...customer, mobile: e.target.value })} className="border p-2 w-full" />
-                  </div>
+                  <Input label="Customer name" value={customer.name} onChange={(e) => setCustomer({ ...customer, name: (e.target as HTMLInputElement).value })} />
+                  <Input label="Mobile (optional)" value={customer.mobile} onChange={(e) => setCustomer({ ...customer, mobile: (e.target as HTMLInputElement).value })} />
 
-                  <div>
-                    <label className="block text-sm font-medium">Address (optional)</label>
-                    <input value={customer.address} onChange={(e) => setCustomer({ ...customer, address: e.target.value })} className="border p-2 w-full" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">Prescribing doctor (optional)</label>
-                    <input value={customer.doctorName} onChange={(e) => setCustomer({ ...customer, doctorName: e.target.value })} className="border p-2 w-full" />
-                  </div>
+                  <Input label="Address (optional)" value={customer.address} onChange={(e) => setCustomer({ ...customer, address: (e.target as HTMLInputElement).value })} />
+                  <Input label="Prescribing doctor (optional)" value={customer.doctorName} onChange={(e) => setCustomer({ ...customer, doctorName: (e.target as HTMLInputElement).value })} />
 
-                  <div>
-                    <label className="block text-sm font-medium">Doctor mobile (optional)</label>
-                    <input value={customer.doctorMobile} onChange={(e) => setCustomer({ ...customer, doctorMobile: e.target.value })} className="border p-2 w-full" />
-                  </div>
+                  <Input label="Doctor mobile (optional)" value={customer.doctorMobile} onChange={(e) => setCustomer({ ...customer, doctorMobile: (e.target as HTMLInputElement).value })} />
                 </div>
               )}
 
               {step === 2 && (
                 <div>
                   <div className="mb-3">
-                    <input
+                    <Input
                       value={search}
-                      onChange={(e) => { setSearch(e.target.value); handleSearch(e.target.value); }}
+                      onChange={(e) => { setSearch((e.target as HTMLInputElement).value); handleSearch((e.target as HTMLInputElement).value); }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -226,7 +211,7 @@ const POS: React.FC = () => {
                         }
                       }}
                       placeholder="Search products (press Enter to add if not found)"
-                      className="border p-2 w-full"
+                      className="w-full"
                     />
                   </div>
 
@@ -252,7 +237,7 @@ const POS: React.FC = () => {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <div className="text-sm">₹{(p.mrp || p.price)?.toFixed ? (p.mrp || p.price).toFixed(2) : (p.mrp || p.price)}</div>
-                                  <button onClick={() => { addToCartFromProduct(p, 1); }} className="px-3 py-1 bg-blue-600 text-white rounded">Add</button>
+                                  <Button size="sm" onClick={() => { addToCartFromProduct(p, 1); }}>Add</Button>
                                 </div>
                               </div>
                             ))}
@@ -274,12 +259,12 @@ const POS: React.FC = () => {
                             const inputVal = priceInput[r.id] ?? String(r.price.toFixed?.(2) ?? r.price);
                             return (
                               <div className="flex items-center gap-2">
-                                <input
+                                <Input
                                   type="text"
                                   inputMode="decimal"
-                                  className="w-24 border p-1"
+                                  className="w-24"
                                   value={inputVal}
-                                  onChange={(e) => setPriceInput((s) => ({ ...s, [r.id]: e.target.value }))}
+                                  onChange={(e) => setPriceInput((s) => ({ ...s, [r.id]: (e.target as HTMLInputElement).value }))}
                                   onBlur={() => {
                                     const raw = priceInput[r.id] ?? String(r.price);
                                     const parsed = parseFloat(raw?.toString().replace(/,/g, '') || '0');
@@ -299,13 +284,13 @@ const POS: React.FC = () => {
                         { id: 'quantity', header: 'Qty', accessor: (r: CartItem) => {
                             const inputVal = qtyInput[r.id] ?? String(r.quantity);
                             return (
-                              <input
+                              <Input
                                 type="text"
                                 inputMode="numeric"
                                 pattern="[0-9]*"
-                                className="w-20 border p-1"
+                                className="w-20"
                                 value={inputVal}
-                                onChange={(e) => setQtyInput((s) => ({ ...s, [r.id]: e.target.value }))}
+                                onChange={(e) => setQtyInput((s) => ({ ...s, [r.id]: (e.target as HTMLInputElement).value }))}
                                 onBlur={() => {
                                   const raw = qtyInput[r.id] ?? String(r.quantity);
                                   const parsed = parseInt(raw, 10);
@@ -382,7 +367,7 @@ const POS: React.FC = () => {
 
                     <div className="flex flex-col items-end mt-auto">
                       <div className="mb-2 w-full">
-                        <button onClick={checkout} disabled={loading} className="w-full bg-blue-700 text-white py-2 rounded">Complete Bill</button>
+                        <Button onClick={checkout} loading={loading} className="w-full">Complete Bill</Button>
                       </div>
                     </div>
                   </div>
@@ -391,8 +376,8 @@ const POS: React.FC = () => {
             </div>
 
             <div className="mt-4 flex justify-end gap-2">
-              {step < 3 && <button onClick={() => setStep(step + 1)} className="px-4 py-2 bg-indigo-600 text-white rounded">Next</button>}
-              {step === 3 && <button onClick={closeModal} className="px-4 py-2 border rounded">Close</button>}
+              {step < 3 && <Button onClick={() => setStep(step + 1)}>Next</Button>}
+              {step === 3 && <Button variant="outline" onClick={closeModal}>Close</Button>}
             </div>
           </div>
         </div>

@@ -21,10 +21,10 @@ model User {
   updatedAt DateTime @updatedAt
 
   // Relations
-  store     Store?   @relation(fields: [storeId], references: [id])
-  storeId   String?
+  store   Store?  @relation(fields: [storeId], references: [id])
+  storeId String?
   // Sales made by this user when acting as a cashier
-  sales     Sale[]
+  sales   Sale[]
 
   @@index([email])
   @@index([role])
@@ -40,21 +40,22 @@ enum Role {
 
 // Store/Pharmacy model
 model Store {
-  id          String   @id @default(uuid())
-  name        String
-  address     String
-  phone       String
-  email       String?
-  licenseNo   String   @unique
-  gstNo       String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        String   @id @default(uuid())
+  name      String
+  address   String
+  phone     String
+  email     String?
+  licenseNo String   @unique
+  gstNo     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  users       User[]
-  products    Product[]
-  sales       Sale[]
+  users        User[]
+  products     Product[]
+  distributors Distributor[]
+  sales        Sale[]
 
   @@index([licenseNo])
   @@map("stores")
@@ -62,26 +63,26 @@ model Store {
 
 // Product/Medicine model
 model Product {
-  id            String   @id @default(uuid())
-  name          String
-  genericName   String?
-  manufacturer  String
-  batchNo       String
-  expiryDate    DateTime
-  quantity      Int      @default(0)
-  price         Float
-  mrp           Float
-  discount      Float    @default(0)
-  gstRate       Float    @default(0)
-  reorderLevel  Int      @default(10)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id           String   @id @default(uuid())
+  name         String
+  genericName  String?
+  manufacturer String
+  batchNo      String
+  expiryDate   DateTime
+  quantity     Int      @default(0)
+  price        Float
+  mrp          Float
+  discount     Float    @default(0)
+  gstRate      Float    @default(0)
+  reorderLevel Int      @default(10)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   // Relations
-  store         Store    @relation(fields: [storeId], references: [id])
-  storeId       String
-  saleItems     SaleItem[]
+  store     Store      @relation(fields: [storeId], references: [id])
+  storeId   String
+  saleItems SaleItem[]
 
   @@index([name])
   @@index([storeId])
@@ -91,30 +92,30 @@ model Product {
 
 // Sales model
 model Sale {
-  id            String   @id @default(uuid())
-  invoiceNo     String   @unique
-  totalAmount   Float
+  id              String   @id @default(uuid())
+  invoiceNo       String   @unique
+  totalAmount     Float
   // optional customer info captured at sale time
-  customerName  String?
-  customerMobile String?
+  customerName    String?
+  customerMobile  String?
   customerAddress String?
-  doctorName     String?
-  doctorMobile   String?
-  discount      Float    @default(0)
-  gstAmount     Float    @default(0)
-  netAmount     Float
-  paymentMethod String   @default("CASH")
-  status        String   @default("COMPLETED")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  doctorName      String?
+  doctorMobile    String?
+  discount        Float    @default(0)
+  gstAmount       Float    @default(0)
+  netAmount       Float
+  paymentMethod   String   @default("CASH")
+  status          String   @default("COMPLETED")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   // Relations
-  store         Store    @relation(fields: [storeId], references: [id])
-  storeId       String
+  store     Store      @relation(fields: [storeId], references: [id])
+  storeId   String
   // Cashier who made the sale
-  cashier       User?    @relation(fields: [cashierId], references: [id])
-  cashierId     String?
-  items         SaleItem[]
+  cashier   User?      @relation(fields: [cashierId], references: [id])
+  cashierId String?
+  items     SaleItem[]
 
   @@index([invoiceNo])
   @@index([storeId])
@@ -144,4 +145,19 @@ model SaleItem {
   @@index([saleId])
   @@index([productId])
   @@map("sale_items")
+}
+
+// Distributor model to track suppliers per store and total purchases
+model Distributor {
+  id            String   @id @default(uuid())
+  name          String
+  totalPurchase Float    @default(0)
+  store         Store    @relation(fields: [storeId], references: [id])
+  storeId       String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([storeId, name])
+  @@index([storeId])
+  @@map("distributors")
 }

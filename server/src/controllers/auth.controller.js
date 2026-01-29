@@ -26,44 +26,46 @@ exports.register = async (req, res, next) => {
 
     const { name, email, password } = req.body;
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: 'User with this email already exists',
-      });
-    }
-
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user with MEDICAL_OWNER role
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        password: hashedPassword,
-        role: 'MEDICAL_OWNER',
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        storeId: true,
-        store: {
-          select: {
-            id: true,
-            name: true,
+    // Create user with MEDICAL_OWNER role. We keep a lightweight pre-check
+    // for UX but still rely on the DB unique constraint as the source of
+    // truth to avoid race conditions. If two requests try to create the same
+    // email concurrently, the DB will enforce uniqueness and Prisma will
+    // return a P2002 error which we catch below and return 409.
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          password: hashedPassword,
+          role: 'MEDICAL_OWNER',
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          storeId: true,
+          store: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
+    } catch (err) {
+      // Prisma unique constraint error
+      if (err && err.code === 'P2002') {
+        const target = err.meta && err.meta.target ? err.meta.target : 'field';
+        return res.status(409).json({ success: false, message: `Duplicate ${target}: an account with this value already exists` });
+      }
+      throw err;
+    }
 
     // Generate token
     const token = generateToken(user.id);

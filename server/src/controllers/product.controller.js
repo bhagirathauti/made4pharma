@@ -54,6 +54,20 @@ exports.createProduct = async (req, res, next) => {
       });
 
       console.log('createProduct - updated existing product:', updated);
+      // Update distributor totalPurchase if supplier provided
+      try {
+        const supplierName = supplier || updated.manufacturer;
+        if (supplierName) {
+          const amount = quantityInt * (typeof costPrice === 'number' ? costPrice : parseFloat(costPrice || '0'));
+          await prisma.distributor.upsert({
+            where: { storeId_name: { storeId, name: supplierName } },
+            update: { totalPurchase: { increment: amount } },
+            create: { name: supplierName, storeId, totalPurchase: amount },
+          });
+        }
+      } catch (e) {
+        console.error('createProduct - distributor upsert error (refill):', e && e.message);
+      }
       return res.status(200).json({ success: true, message: 'Product updated (refill)', data: { product: updated } });
     }
     if (product && !refillFlag) {
@@ -75,6 +89,20 @@ exports.createProduct = async (req, res, next) => {
       },
     });
     console.log('createProduct - created product:', created);
+    // Update/create distributor record with totalPurchase
+    try {
+      const supplierName = supplier || created.manufacturer;
+      if (supplierName) {
+        const amount = quantityInt * (typeof costPrice === 'number' ? costPrice : parseFloat(costPrice || '0'));
+        await prisma.distributor.upsert({
+          where: { storeId_name: { storeId, name: supplierName } },
+          update: { totalPurchase: { increment: amount } },
+          create: { name: supplierName, storeId, totalPurchase: amount },
+        });
+      }
+    } catch (e) {
+      console.error('createProduct - distributor upsert error (create):', e && e.message);
+    }
     res.status(201).json({ success: true, message: 'Product created', data: { product: created } });
   } catch (error) {
     console.error('createProduct - error:', error && error.message, error && error.stack);
@@ -108,24 +136,11 @@ exports.getDistributors = async (req, res, next) => {
     if (!storeId) {
       return res.status(400).json({ success: false, message: 'User not assigned to a store' });
     }
-
-    // Fetch products for the store and aggregate totals per manufacturer
-    const products = await prisma.product.findMany({ where: { storeId } });
-
-    const map = {};
-    for (const p of products) {
-      const m = p.manufacturer || 'Unknown';
-      const qty = typeof p.quantity === 'number' ? p.quantity : parseInt(String(p.quantity || '0'), 10);
-      const price = typeof p.price === 'number' ? p.price : parseFloat(String(p.price || '0'));
-      const amount = qty * price;
-      if (!map[m]) map[m] = { manufacturer: m, totalQuantity: 0, totalAmount: 0 };
-      map[m].totalQuantity += qty;
-      map[m].totalAmount += amount;
-    }
-
-    const distributors = Object.values(map).sort((a, b) => b.totalAmount - a.totalAmount);
-
-    res.json({ success: true, data: { distributors } });
+    // Read from distributors table for this store
+    const distributors = await prisma.distributor.findMany({ where: { storeId }, orderBy: { totalPurchase: 'desc' } });
+    // normalize response shape to match previous API (manufacturer + totals)
+    const result = distributors.map((d) => ({ manufacturer: d.name, totalAmount: d.totalPurchase }));
+    res.json({ success: true, data: { distributors: result } });
   } catch (error) {
     next(error);
   }

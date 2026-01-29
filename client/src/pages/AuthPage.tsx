@@ -342,6 +342,7 @@ export const AuthPage: React.FC = () => {
                   placeholder="Enter your email"
                   value={loginEmail}
                   onChange={(e) => setLoginEmail(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />
@@ -352,6 +353,7 @@ export const AuthPage: React.FC = () => {
                   placeholder="Enter your password"
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />
@@ -392,6 +394,7 @@ export const AuthPage: React.FC = () => {
                   placeholder="Enter your full name"
                   value={signupName}
                   onChange={(e) => setSignupName(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />
@@ -402,6 +405,7 @@ export const AuthPage: React.FC = () => {
                   placeholder="Enter your email"
                   value={signupEmail}
                   onChange={(e) => setSignupEmail(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />
@@ -413,6 +417,7 @@ export const AuthPage: React.FC = () => {
                   helperText="Must be at least 8 characters"
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />
@@ -423,6 +428,7 @@ export const AuthPage: React.FC = () => {
                   placeholder="Confirm your password"
                   value={signupConfirmPassword}
                   onChange={(e) => setSignupConfirmPassword(e.target.value)}
+                  tooltipDisabled
                   required
                   disabled={loading}
                 />

@@ -1,23 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TooltipProps {
-  content: string;
+  id?: string;
+  content?: string;
   placement?: 'top' | 'bottom' | 'left' | 'right';
   children: React.ReactElement;
   delay?: number;
 }
 
 export const Tooltip: React.FC<TooltipProps> = ({
+  id,
   content,
   placement = 'top',
   children,
   delay = 200,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({});
+  const [tooltipStyle, setTooltipStyle] = useState<React.CSSProperties>({ position: 'fixed', top: '-9999px', left: '-9999px', visibility: 'hidden' });
   const timeoutRef = useRef<number | null>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
 
   const showTooltip = () => {
     timeoutRef.current = window.setTimeout(() => {
@@ -30,9 +33,11 @@ export const Tooltip: React.FC<TooltipProps> = ({
       clearTimeout(timeoutRef.current);
     }
     setIsVisible(false);
+    setTooltipStyle({ position: 'fixed', top: '-9999px', left: '-9999px', visibility: 'hidden' });
   };
 
-  useEffect(() => {
+  // compute position synchronously before paint to avoid an initial flash at 0,0
+  useLayoutEffect(() => {
     if (isVisible && triggerRef.current && tooltipRef.current) {
       const triggerRect = triggerRef.current.getBoundingClientRect();
       const tooltipRect = tooltipRef.current.getBoundingClientRect();
@@ -58,12 +63,46 @@ export const Tooltip: React.FC<TooltipProps> = ({
           break;
       }
 
-      setTooltipStyle({
-        position: 'fixed',
-        top: `${top}px`,
-        left: `${left}px`,
-      });
+      setTooltipStyle({ position: 'fixed', top: `${top}px`, left: `${left}px`, visibility: 'visible' });
     }
+  }, [isVisible, placement, content]);
+
+  // recompute while visible on resize/scroll
+  useEffect(() => {
+    if (!isVisible) return;
+    const handler = () => {
+      if (triggerRef.current && tooltipRef.current) {
+        const triggerRect = triggerRef.current.getBoundingClientRect();
+        const tooltipRect = tooltipRef.current.getBoundingClientRect();
+        let top = 0;
+        let left = 0;
+        switch (placement) {
+          case 'top':
+            top = triggerRect.top - tooltipRect.height - 8;
+            left = triggerRect.left + (triggerRect.width - tooltipRect.width) / 2;
+            break;
+          case 'bottom':
+            top = triggerRect.bottom + 8;
+            left = triggerRect.left + (triggerRect.width - tooltipRect.width) / 2;
+            break;
+          case 'left':
+            top = triggerRect.top + (triggerRect.height - tooltipRect.height) / 2;
+            left = triggerRect.left - tooltipRect.width - 8;
+            break;
+          case 'right':
+            top = triggerRect.top + (triggerRect.height - tooltipRect.height) / 2;
+            left = triggerRect.right + 8;
+            break;
+        }
+        setTooltipStyle({ position: 'fixed', top: `${top}px`, left: `${left}px`, visibility: 'visible' });
+      }
+    };
+    window.addEventListener('resize', handler);
+    window.addEventListener('scroll', handler, true);
+    return () => {
+      window.removeEventListener('resize', handler);
+      window.removeEventListener('scroll', handler, true);
+    };
   }, [isVisible, placement]);
 
   const arrowPositions = {
@@ -81,12 +120,13 @@ export const Tooltip: React.FC<TooltipProps> = ({
         onMouseLeave={hideTooltip}
         onFocus={showTooltip}
         onBlur={hideTooltip}
-        className="inline-block"
+        className="inline-block w-full"
       >
         {children}
       </div>
-      {isVisible && (
+      {isVisible && content && typeof document !== 'undefined' && createPortal(
         <div
+          id={id}
           ref={tooltipRef}
           role="tooltip"
           style={tooltipStyle}
@@ -96,7 +136,8 @@ export const Tooltip: React.FC<TooltipProps> = ({
           <div
             className={`absolute w-0 h-0 border-4 ${arrowPositions[placement]}`}
           />
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

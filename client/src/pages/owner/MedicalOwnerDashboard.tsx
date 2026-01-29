@@ -1,83 +1,124 @@
 import type { FC } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Button, Table } from '../../components/ui';
+
+const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const api = (path: string, opts: any = {}) => {
+  const token = localStorage.getItem('token');
+  const url = path.startsWith('http') ? path : `${apiBase}${path}`;
+  return fetch(url, { headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, ...opts }).then((r) => r.json());
+};
 
 export const MedicalOwnerDashboard: FC = () => {
+  const [totalProducts, setTotalProducts] = useState<number | null>(null);
+  const [todaysSales, setTodaysSales] = useState<number | null>(null);
+  const [lowStockCount, setLowStockCount] = useState<number | null>(null);
+  const [staffCount, setStaffCount] = useState<number | null>(null);
+  const [recentSales, setRecentSales] = useState<any[]>([]);
+  const [lowStockItemsList, setLowStockItemsList] = useState<any[]>([]);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [pRes, sRes, staffRes, salesRes] = await Promise.all([
+        api('/api/products'),
+        api('/api/sales?recent=true'),
+        api('/api/users/cashiers'),
+        api('/api/sales?limit=5'),
+      ]);
+
+      if (pRes && pRes.success) {
+        const products = pRes.data.products || [];
+        setTotalProducts(products.length);
+        const lowItems = products.filter((x: any) => typeof x.quantity === 'number' ? x.quantity <= (x.reorderLevel ?? 10) : false);
+        setLowStockCount(lowItems.length);
+        setLowStockItemsList(lowItems);
+      }
+
+      if (sRes && sRes.success) {
+        // sRes could be structured; compute today's sales total
+        const sales = sRes.data?.sales || [];
+        const today = new Date();
+        const start = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+        const end = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString();
+        const todays = sales.filter((s: any) => s.createdAt >= start && s.createdAt <= end);
+        const total = todays.reduce((acc: number, it: any) => acc + (Number(it.netAmount || it.totalAmount || 0) || 0), 0);
+        setTodaysSales(total);
+      }
+
+      if (staffRes && staffRes.success) {
+        setStaffCount((staffRes.data && staffRes.data.users && staffRes.data.users.length) || 0);
+      }
+
+      if (salesRes && salesRes.success) {
+        setRecentSales(salesRes.data?.sales || []);
+      }
+    } catch (e) {
+      console.error('dashboard fetchAll error', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAll();
+    const t = setInterval(fetchAll, 5000);
+    return () => clearInterval(t);
+  }, [fetchAll]);
+
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">Total Products</p>
-              <h3 className="text-3xl font-bold mt-2">1,254</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-          </div>
+    <div>
+      <header className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Store Dashboard</h1>
+          <p className="text-sm text-gray-500">Live overview of your store activity</p>
+        </div>
+        <div>
+          <Button onClick={() => fetchAll()}>Refresh</Button>
+        </div>
+      </header>
+
+      <section className="grid grid-cols-4 gap-6 mb-6">
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Total Products</p>
+          <div className="mt-2 text-2xl font-semibold">{totalProducts ?? '—'}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Today's Sales</p>
+          <div className="mt-2 text-2xl font-semibold">{todaysSales != null ? `₹${todaysSales.toFixed(2)}` : '—'}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Staff Members</p>
+          <div className="mt-2 text-2xl font-semibold">{staffCount ?? '—'}</div>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Low Stock Items</p>
+          <div className="mt-2 text-2xl font-semibold">{lowStockCount ?? '—'}</div>
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow p-5">
+          <h2 className="text-lg font-semibold mb-3">Low Stock Items</h2>
+          <Table
+            columns={[
+              { id: 'name', header: 'Product', accessor: (r: any) => r.name },
+              { id: 'manufacturer', header: 'Distributor', accessor: (r: any) => r.manufacturer || r.supplier || '—' },
+              { id: 'quantity', header: 'Quantity Left', accessor: (r: any) => String(r.quantity ?? 0), sortable: true, width: '120px' },
+            ]}
+            data={lowStockItemsList}
+            keyExtractor={(r: any) => r.id}
+            pagination={false}
+            emptyMessage="No low stock items"
+          />
         </div>
 
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-green-100 text-sm">Today's Sales</p>
-              <h3 className="text-3xl font-bold mt-2">₹45,890</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <h2 className="text-lg font-semibold mb-3">Quick Actions</h2>
+          <div className="flex flex-col gap-3">
+            <Button onClick={() => window.location.assign('/owner/inventory')}>Inventory</Button>
+            <Button onClick={() => window.location.assign('/owner/reports')} variant="outline">Reports</Button>
+            <Button onClick={() => window.location.assign('/owner/staff')} variant="outline">Staff</Button>
           </div>
         </div>
-
-        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-orange-100 text-sm">Low Stock Items</p>
-              <h3 className="text-3xl font-bold mt-2">23</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-purple-100 text-sm">Staff Members</p>
-              <h3 className="text-3xl font-bold mt-2">8</h3>
-            </div>
-            <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 919.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
-            <h3 className="font-semibold text-gray-900">Inventory Management</h3>
-            <p className="text-sm text-gray-600 mt-1">Manage stock and product details</p>
-          </button>
-          <button className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
-            <h3 className="font-semibold text-gray-900">Sales Reports</h3>
-            <p className="text-sm text-gray-600 mt-1">View and generate sales reports</p>
-          </button>
-          <button className="border border-gray-200 rounded-lg p-4 hover:border-blue-500 hover:bg-blue-50 transition-all text-left">
-            <h3 className="font-semibold text-gray-900">Staff Management</h3>
-            <p className="text-sm text-gray-600 mt-1">Manage cashiers and staff access</p>
-          </button>
-        </div>
-      </div>
-    </>
+      </section>
+    </div>
   );
 };
